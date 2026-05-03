@@ -1,0 +1,14 @@
+{
+    "initial_file": "input.txt",
+    "encrypted_file": "encrypted.bin",
+    "decrypted_file": "decrypted.txt",
+    "encrypted_symmetric_key": "enc_sym_key.bin",
+    "public_key": "public.pem",
+    "private_key": "private.pem",
+    "algorithms": {
+        "symmetric": "SM4",
+        "asymmetric": "RSA",
+        "key_size": 2048,
+        "sm4_key_size": 16
+    }
+}
