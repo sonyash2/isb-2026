@@ -1,0 +1,5 @@
+{
+    "default_algorithm": "sha256",
+    "hash_extension": ".sha256",
+    "block_size": 8192
+}
