@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Контроль целостности файлов</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Контроль целостности файлов</h1>
+        <div class="subtitle">Проверка целостности с помощью SHA-256</div>
+        
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('hash')">Вычислить хеш</button>
+            <button class="tab-btn" onclick="switchTab('save')">Сохранить хеш</button>
+            <button class="tab-btn" onclick="switchTab('verify')">Проверить</button>
+            <button class="tab-btn" onclick="switchTab('upload')">Создать файл</button>
+        </div>
+        
+        <div class="tab-content">
+            <div id="hash-tab" class="tab-pane active">
+                <div class="form-group">
+                    <label>Путь к файлу</label>
+                    <div class="file-row">
+                        <input type="text" id="hash-file" placeholder="test_file.txt">
+                        <button onclick="selectFile('hash-file')">Выбрать</button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Алгоритм</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="hash-algo" value="sha256" checked> SHA-256</label>
+                        <label><input type="radio" name="hash-algo" value="md5"> MD5</label>
+                        <label><input type="radio" name="hash-algo" value="sha1"> SHA-1</label>
+                    </div>
+                </div>
+                
+                <button class="btn-primary" onclick="computeHash()">Вычислить хеш</button>
+                
+                <div id="hash-result" class="result-box" style="display: none;"></div>
+            </div>
+            
+            <div id="save-tab" class="tab-pane">
+                <div class="form-group">
+                    <label>Путь к файлу</label>
+                    <div class="file-row">
+                        <input type="text" id="save-file" placeholder="test_file.txt">
+                        <button onclick="selectFile('save-file')">Выбрать</button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Алгоритм</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="save-algo" value="sha256" checked> SHA-256</label>
+                        <label><input type="radio" name="save-algo" value="md5"> MD5</label>
+                        <label><input type="radio" name="save-algo" value="sha1"> SHA-1</label>
+                    </div>
+                </div>
+                
+                <button class="btn-primary" onclick="saveHash()">Сохранить хеш</button>
+                
+                <div id="save-result" class="result-box" style="display: none;"></div>
+            </div>
+            
+            <div id="verify-tab" class="tab-pane">
+                <div class="form-group">
+                    <label>Путь к файлу</label>
+                    <div class="file-row">
+                        <input type="text" id="verify-file" placeholder="test_file.txt">
+                        <button onclick="selectFile('verify-file')">Выбрать</button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Файл с хешем (необязательно)</label>
+                    <div class="file-row">
+                        <input type="text" id="hash-file-path" placeholder="test_file.txt.sha256">
+                        <button onclick="selectFile('hash-file-path')">Выбрать</button>
+                    </div>
+                </div>
+                
+                <button class="btn-primary" onclick="verifyIntegrity()">Проверить</button>
+                
+                <div id="verify-result" class="result-box" style="display: none;"></div>
+            </div>
+            
+            <div id="upload-tab" class="tab-pane">
+                <div class="form-group">
+                    <label>Имя файла</label>
+                    <input type="text" id="new-filename" placeholder="myfile.txt">
+                </div>
+                
+                <div class="form-group">
+                    <label>Содержимое</label>
+                    <textarea id="file-content" rows="5" placeholder="Введите текст для сохранения в файл..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Алгоритм</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="upload-algo" value="sha256" checked> SHA-256</label>
+                        <label><input type="radio" name="upload-algo" value="md5"> MD5</label>
+                        <label><input type="radio" name="upload-algo" value="sha1"> SHA-1</label>
+                    </div>
+                </div>
+                
+                <button class="btn-primary" onclick="uploadFile()">Создать и вычислить хеш</button>
+                
+                <div id="upload-result" class="result-box" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="progress-bar" class="progress-bar">
+        <div class="progress-fill"></div>
+    </div>
+
+    <script>
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+            document.getElementById(tab + '-tab').classList.add('active');
+        }
+        
+        function selectFile(inputId) {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.onchange = (e) => {
+                if (e.target.files.length > 0) {
+                    document.getElementById(inputId).value = e.target.files[0].name;
+                }
+            };
+            input.click();
+        }
+        
+        function showProgress() {
+            const progressBar = document.getElementById('progress-bar');
+            const progressFill = document.querySelector('.progress-fill');
+            progressBar.style.display = 'block';
+            progressFill.style.width = '100%';
+            setTimeout(() => {
+                progressBar.style.display = 'none';
+                progressFill.style.width = '0%';
+            }, 1000);
+        }
+        
+        function showResult(elementId, title, content, isSuccess = true) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.innerHTML = `
+                <h4>${title}</h4>
+                <div class="${isSuccess ? 'success' : 'error'}">${content}</div>
+            `;
+        }
+        
+        async function computeHash() {
+            const filePath = document.getElementById('hash-file').value;
+            const algorithm = document.querySelector('input[name="hash-algo"]:checked').value;
+            
+            if (!filePath) {
+                showResult('hash-result', 'Ошибка', 'Укажите путь к файлу', false);
+                return;
+            }
+            
+            showProgress();
+            
+            try {
+                const response = await fetch('/api/hash', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ file_path: filePath, algorithm: algorithm })
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showResult('hash-result', 'Результат вычисления хеша', 
+                        `<strong>Файл:</strong> ${result.file}<br>
+                         <strong>Алгоритм:</strong> ${result.algorithm.toUpperCase()}<br>
+                         <strong>Хеш:</strong><br>
+                         <div class="hash-value">${result.hash}</div>`, true);
+                } else {
+                    showResult('hash-result', 'Ошибка', result.error, false);
+                }
+            } catch (error) {
+                showResult('hash-result', 'Ошибка', error.message, false);
+            }
+        }
+        
+        async function saveHash() {
+            const filePath = document.getElementById('save-file').value;
+            const algorithm = document.querySelector('input[name="save-algo"]:checked').value;
+            
+            if (!filePath) {
+                showResult('save-result', 'Ошибка', 'Укажите путь к файлу', false);
+                return;
+            }
+            
+            showProgress();
+            
+            try {
+                const response = await fetch('/api/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ file_path: filePath, algorithm: algorithm })
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showResult('save-result', 'Хеш сохранен', 
+                        `<strong>Файл:</strong> ${filePath}<br>
+                         <strong>Алгоритм:</strong> ${result.algorithm.toUpperCase()}<br>
+                         <strong>Хеш:</strong><br>
+                         <div class="hash-value">${result.hash}</div><br>
+                         <strong>Сохранен в:</strong> ${result.hash_file}`, true);
+                } else {
+                    showResult('save-result', 'Ошибка', result.error, false);
+                }
+            } catch (error) {
+                showResult('save-result', 'Ошибка', error.message, false);
+            }
+        }
+        
+        async function verifyIntegrity() {
+            const filePath = document.getElementById('verify-file').value;
+            const hashFile = document.getElementById('hash-file-path').value;
+            
+            if (!filePath) {
+                showResult('verify-result', 'Ошибка', 'Укажите путь к файлу', false);
+                return;
+            }
+            
+            showProgress();
+            
+            try {
+                const response = await fetch('/api/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ file_path: filePath, hash_file: hashFile || null })
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    const status = result.is_valid ? 
+                        '<span class="success">Файл НЕ ИЗМЕНЕН. Целостность подтверждена.</span>' : 
+                        '<span class="error">Файл ИЗМЕНЕН. Целостность нарушена!</span>';
+                    
+                    showResult('verify-result', 'Результат проверки', 
+                        `<strong>Текущий хеш:</strong><br>
+                         <div class="hash-value">${result.current_hash}</div><br>
+                         <strong>Сохраненный хеш:</strong><br>
+                         <div class="hash-value">${result.saved_hash}</div><br><br>
+                         ${status}`, result.is_valid);
+                } else {
+                    showResult('verify-result', 'Ошибка', result.error, false);
+                }
+            } catch (error) {
+                showResult('verify-result', 'Ошибка', error.message, false);
+            }
+        }
+        
+        async function uploadFile() {
+            const filename = document.getElementById('new-filename').value;
+            const content = document.getElementById('file-content').value;
+            const algorithm = document.querySelector('input[name="upload-algo"]:checked').value;
+            
+            if (!filename) {
+                showResult('upload-result', 'Ошибка', 'Введите имя файла', false);
+                return;
+            }
+            
+            if (!content) {
+                showResult('upload-result', 'Ошибка', 'Введите содержимое файла', false);
+                return;
+            }
+            
+            showProgress();
+            
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename: filename, content: content, algorithm: algorithm })
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showResult('upload-result', 'Файл создан', 
+                        `<strong>Файл:</strong> ${result.file_path}<br>
+                         <strong>Алгоритм:</strong> ${result.algorithm.toUpperCase()}<br>
+                         <strong>Хеш:</strong><br>
+                         <div class="hash-value">${result.hash}</div>`, true);
+                } else {
+                    showResult('upload-result', 'Ошибка', result.error, false);
+                }
+            } catch (error) {
+                showResult('upload-result', 'Ошибка', error.message, false);
+            }
+        }
+    </script>
+</body>
+</html>
